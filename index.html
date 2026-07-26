@@ -985,6 +985,9 @@ window.BKBC = (function(){
     <div class="cc-sub">beim Kauf des Komplettpakets — für dein Feedback nach der Klausur.</div>
   </div>
 
+  <div class="sec-lbl">Klausur-Werkzeuge</div>
+  <div class="linklist"><a href="#" data-tab="simulator" onclick="return false">Klausursimulator</a><a href="#" data-tab="spick" onclick="return false">Formelsammlung</a><a href="#" data-tab="plan" onclick="return false">Notfallplan</a></div>
+
   <div class="sec-lbl">Meine Kurse</div>
   <div class="linklist" id="kursSwitch">
     <a href="https://osta.klausurchecker.de/"><span><b>OSTA</b> · Statistik 1</span><svg class="i"><use href="#i-chev"/></svg></a>
@@ -1160,6 +1163,1049 @@ window.BKBC = (function(){
 </div>
 
 <!-- tabbar -->
+<section id="screen-simulator" class="screen">
+  <div id="simWrap" class="sim-wrap"></div>
+</section>
+
+<style id="simStyle">
+/* ===== Klausursimulator · fach-agnostisch, gescopet auf #screen-simulator ===== */
+#screen-simulator .sim-wrap{min-height:1px}
+#screen-simulator h3{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--text);margin:0 0 6px;letter-spacing:-.01em}
+
+#screen-simulator .sim-card{background:var(--surface);border:1px solid var(--line-2);border-radius:16px;padding:18px;box-shadow:var(--sh-1);margin-bottom:14px}
+#screen-simulator .sim-card p{color:var(--text-2);font-size:14px;line-height:1.55;margin-top:4px}
+
+/* Modus-Auswahl */
+#screen-simulator .sim-modes{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+#screen-simulator .sim-mode{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:16px;border-radius:14px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;min-height:48px;font-family:var(--sans);color:var(--text)}
+#screen-simulator .sim-mode.rec{border-color:var(--accent)}
+#screen-simulator .sim-mode-t{display:block}
+#screen-simulator .sim-mode-t b{display:block;font-size:15.5px;font-weight:600;color:var(--text)}
+#screen-simulator .sim-mode-t small{display:block;margin-top:3px;font-size:12.5px;color:var(--text-2)}
+#screen-simulator .sim-mode .i{color:var(--text-3);flex:none;width:17px;height:17px}
+#screen-simulator .sim-pill-rec{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent-deep);background:color-mix(in srgb, var(--accent) 14%, var(--surface-2));padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+
+/* Lauf: Kopfzeile, Timer, Fortschritt */
+#screen-simulator .sim-run-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#screen-simulator .sim-progress{font-size:12.5px;color:var(--text-2);font-weight:600}
+#screen-simulator .sim-timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px;padding:5px 11px;border-radius:999px;background:var(--surface-2);color:var(--text-2);display:inline-flex;align-items:center;gap:5px}
+#screen-simulator .sim-timer .i{width:14px;height:14px}
+#screen-simulator .sim-timer.sim-warn{color:var(--wrong);background:var(--wrong-bg)}
+#screen-simulator .sim-bar{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin:0 0 16px}
+#screen-simulator .sim-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-deep),var(--accent));border-radius:99px;transition:width .3s ease}
+
+/* Fragekarte */
+#screen-simulator .sim-q{background:var(--surface);border:1px solid var(--line-2);border-radius:16px;padding:18px;box-shadow:var(--sh-1)}
+#screen-simulator .sim-tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);background:var(--surface-2);border:1px solid var(--line-2);padding:2px 9px;border-radius:999px;margin-bottom:10px}
+#screen-simulator .sim-stem{font-family:var(--serif);font-weight:600;font-size:17px;line-height:1.42;color:var(--text);letter-spacing:-.01em}
+#screen-simulator .sim-opts{margin-top:14px;display:flex;flex-direction:column;gap:9px}
+#screen-simulator .sim-opt{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line-2);background:var(--bg);color:var(--text-2);font-family:var(--sans);font-size:15px;line-height:1.4;cursor:pointer;min-height:48px}
+#screen-simulator .sim-opt.sel{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--bg));color:var(--text);font-weight:600}
+#screen-simulator .sim-num{width:100%;margin-top:14px;padding:13px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line-2);color:var(--text);font-family:var(--sans);font-size:16px;min-height:48px}
+#screen-simulator .sim-nav{display:flex;gap:10px;margin-top:16px}
+#screen-simulator .sim-nav .btn{flex:1}
+
+/* Auswertung */
+#screen-simulator .sim-score-card{text-align:center}
+#screen-simulator .sim-score{display:flex;flex-direction:column;align-items:center;gap:2px}
+#screen-simulator .sim-score-num{font-family:var(--serif);font-weight:600;font-size:42px;line-height:1}
+#screen-simulator .sim-score.good .sim-score-num{color:var(--done)}
+#screen-simulator .sim-score.mid .sim-score-num{color:var(--accent-deep)}
+#screen-simulator .sim-score.bad .sim-score-num{color:var(--wrong)}
+#screen-simulator .sim-score-lbl{font-size:13.5px;color:var(--text-2)}
+#screen-simulator .sim-ampel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;margin-top:10px}
+#screen-simulator .sim-ampel.good{background:var(--done-bg);color:var(--done)}
+#screen-simulator .sim-ampel.mid{background:color-mix(in srgb, var(--accent) 15%, var(--surface-2));color:var(--accent-deep)}
+#screen-simulator .sim-ampel.bad{background:var(--wrong-bg);color:var(--wrong)}
+
+#screen-simulator .sim-weak-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair);font-size:14px;color:var(--text)}
+#screen-simulator .sim-weak-row:last-child{border-bottom:none}
+#screen-simulator .sim-weak-frac{color:var(--text-3);font-size:12.5px;white-space:nowrap}
+
+#screen-simulator .sim-list{margin-top:2px}
+#screen-simulator .sim-item{border:1px solid var(--line-2);border-radius:13px;background:var(--surface);margin-bottom:9px;overflow:hidden}
+#screen-simulator .sim-item summary{list-style:none;cursor:pointer;padding:13px 14px;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text);min-height:48px}
+#screen-simulator .sim-item summary::-webkit-details-marker{display:none}
+#screen-simulator .sim-item summary::marker{content:""}
+#screen-simulator .sim-item .sim-ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none}
+#screen-simulator .sim-item.ok .sim-ic{background:var(--done-bg);color:var(--done)}
+#screen-simulator .sim-item.bad .sim-ic{background:var(--wrong-bg);color:var(--wrong)}
+#screen-simulator .sim-item-stem{flex:1;min-width:0;font-weight:600}
+#screen-simulator .sim-chev{color:var(--text-3);transition:transform .2s;flex:none}
+#screen-simulator .sim-item[open] .sim-chev{transform:rotate(90deg)}
+#screen-simulator .sim-item-body{padding:0 14px 16px;font-size:13.5px;color:var(--text-2);line-height:1.55}
+#screen-simulator .sim-item-body b{color:var(--text)}
+#screen-simulator .sim-item-ans{margin:0 0 10px;padding:9px 11px;border-radius:10px;background:var(--surface-2);font-size:13px;color:var(--text)}
+
+#screen-simulator .sim-actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+#screen-simulator .sim-actions .btn{width:100%}
+
+#screen-simulator .sim-buy-card{border:2px solid var(--accent)}
+
+@media(min-width:380px){
+  #screen-simulator .sim-score-num{font-size:48px}
+}
+</style>
+
+<script id="simCore">
+(function(){
+  "use strict";
+
+  var simWrap = document.getElementById("simWrap");
+  if(!simWrap){
+    /* Ohne Markup kein Betrieb möglich, aber die API muss trotzdem existieren. */
+    window.BK_SIM_OPEN = function(){};
+    return;
+  }
+
+  /* ================= Helfer ================= */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function fmtDe(n){ return String(n).replace(".", ","); }
+  function parseNum(raw){
+    var s = String(raw == null ? "" : raw).replace(",", ".").trim();
+    if(s === "") return NaN;
+    return parseFloat(s);
+  }
+  function fmtTime(ms){
+    if(ms < 0) ms = 0;
+    var s = Math.ceil(ms / 1000);
+    var mm = Math.floor(s / 60), ss = s % 60;
+    return (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss;
+  }
+  function shuffle(arr){
+    var i, j, tmp;
+    for(i = arr.length - 1; i > 0; i--){
+      j = Math.floor(Math.random() * (i + 1));
+      tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+  function rangeArray(n){ var a = [], i; for(i = 0; i < n; i++) a.push(i); return a; }
+  function computeFull(){
+    return (typeof window.BK_SIM_ACCESS === "function") ? !!window.BK_SIM_ACCESS() : false;
+  }
+
+  /* ================= Modi ================= */
+  var MODES = {
+    kurz:     {key:"kurz",     label:"Kurz",     n:10, min:15},
+    klausur:  {key:"klausur",  label:"Klausur",  n:20, min:40, def:true},
+    marathon: {key:"marathon", label:"Marathon", n:30, min:60},
+    demo:     {key:"demo",     label:"Demo",     n:3,  min:0}
+  };
+
+  /* ================= Fragenbanken einlesen ================= */
+  function getBanks(){
+    var out = [];
+    var els = document.querySelectorAll('script[id^="qbank-"]');
+    Array.prototype.forEach.call(els, function(el){
+      var m = /qbank-(\d+)/.exec(el.id);
+      if(!m) return;
+      var data;
+      try { data = JSON.parse(el.textContent || ""); } catch(e){ return; }
+      if(!data || !data.questions || !data.questions.length) return;
+      out.push({n: parseInt(m[1], 10), topic: data.topic || ("Kapitel " + m[1]), questions: data.questions});
+    });
+    out.sort(function(a, b){ return a.n - b.n; });
+    return out;
+  }
+
+  /* Innerhalb eines Kapitels: Runden über die Schwierigkeiten, damit eine echte
+     Mischung entsteht, statt reinem Zufall auf eine Bank voller "mittel"-Fragen. */
+  function pickFromChapter(shuffledList, want){
+    var byDiff = {leicht: [], mittel: [], schwer: []};
+    var i;
+    for(i = 0; i < shuffledList.length; i++){
+      var d = shuffledList[i].difficulty;
+      if(!byDiff[d]) byDiff[d] = [];
+      byDiff[d].push(shuffledList[i]);
+    }
+    var order = ["mittel", "schwer", "leicht"];
+    var idxs = {leicht:0, mittel:0, schwer:0};
+    var out = [], remaining = want, progress = true;
+    while(remaining > 0 && progress){
+      progress = false;
+      for(i = 0; i < order.length && remaining > 0; i++){
+        var d = order[i];
+        if(idxs[d] < byDiff[d].length){
+          out.push(byDiff[d][idxs[d]]);
+          idxs[d]++; remaining--; progress = true;
+        }
+      }
+    }
+    return out;
+  }
+
+  function wrapQ(q, bank){
+    var item = {q: q, chapter: bank.n, topic: bank.topic, given: null, correct: null};
+    if(q.type === "single" && q.options){ item.options = shuffle(q.options.slice()); }
+    return item;
+  }
+
+  /* Gleich viele Fragen je Kapitel, Rest zufällig auf Kapitel verteilt,
+     fehlender Bestand wird aus dem Rest-Pool aller Kapitel aufgefüllt. */
+  function pickQuestions(banks, total){
+    var C = banks.length;
+    if(C === 0) return [];
+    var pools = [], i, k;
+    for(i = 0; i < C; i++){ pools.push({bank: banks[i], list: shuffle(banks[i].questions.slice())}); }
+
+    var base = Math.floor(total / C);
+    var rem = total - base * C;
+    var order = shuffle(rangeArray(C));
+    var extra = {};
+    for(i = 0; i < rem; i++){ extra[order[i]] = true; }
+
+    var picked = [], leftover = [];
+    for(i = 0; i < C; i++){
+      var want = base + (extra[i] ? 1 : 0);
+      var list = pools[i].list;
+      var chosen = pickFromChapter(list, Math.min(want, list.length));
+      var chosenIds = {};
+      for(k = 0; k < chosen.length; k++){ chosenIds[chosen[k].id] = true; picked.push(wrapQ(chosen[k], pools[i].bank)); }
+      for(k = 0; k < list.length; k++){ if(!chosenIds[list[k].id]) leftover.push(wrapQ(list[k], pools[i].bank)); }
+    }
+    leftover = shuffle(leftover);
+    var need = total - picked.length, li = 0;
+    while(need > 0 && li < leftover.length){ picked.push(leftover[li]); li++; need--; }
+
+    return shuffle(picked);
+  }
+
+  /* ================= Zustand ================= */
+  var RUN = null;
+  var LAST_MODE = "klausur";
+
+  /* ================= Intro / Modus-Auswahl ================= */
+  function modeCardHtml(mode){
+    var recBadge = mode.def ? "<span class='sim-pill-rec'>Standard</span>" : "";
+    return "<button type='button' class='sim-mode" + (mode.def ? " rec" : "") + "' data-mode='" + mode.key + "'>" +
+      "<span class='sim-mode-t'><b>" + esc(mode.label) + recBadge + "</b><small>" + mode.n + " Fragen &middot; " + mode.min + " Min</small></span>" +
+      "<svg class='i'><use href='#i-arrow'/></svg>" +
+    "</button>";
+  }
+
+  function renderIntro(){
+    stopTimer();
+    RUN = null;
+    var full = computeFull();
+    var html = "<div class='scr-h'><span class='eyebrow'>Klausursimulator</span><h1>Bereit f&uuml;r die echte Klausur?</h1>" +
+      "<p>Gemischte Fragen aus allen Kapiteln &ndash; wie in der echten Pr&uuml;fung.</p></div>";
+    if(full){
+      html += "<div class='sim-modes'>" + modeCardHtml(MODES.kurz) + modeCardHtml(MODES.klausur) + modeCardHtml(MODES.marathon) + "</div>";
+    } else {
+      html += "<div class='sim-card'><h3>Kostenlos testen</h3>" +
+        "<p>3 gemischte Fragen aus allen Kapiteln, ganz ohne Zeitdruck. Der vollst&auml;ndige Simulator mit Kurz-, Klausur- und Marathon-Modus geh&ouml;rt zum Komplettpaket.</p>" +
+        "<button type='button' class='btn btn-primary btn-block' id='simDemoStart' style='margin-top:12px'>Demo starten</button></div>";
+    }
+    simWrap.innerHTML = html;
+  }
+
+  function renderNoQuestions(){
+    simWrap.innerHTML = "<div class='sim-card' style='text-align:center'><h3>Keine Fragen gefunden</h3>" +
+      "<p>Es konnten gerade keine Fragen aus den Kapiteln geladen werden. Bitte versuch es sp&auml;ter erneut.</p></div>";
+  }
+
+  /* ================= Lauf starten ================= */
+  function startRun(modeKey){
+    stopTimer();
+    var full = computeFull();
+    var modeCfg = MODES[modeKey];
+    if(!modeCfg || (modeKey !== "demo" && !full)){ modeCfg = MODES.demo; modeKey = "demo"; }
+    LAST_MODE = modeKey;
+
+    var banks = getBanks();
+    var items = pickQuestions(banks, modeCfg.n);
+    if(!items.length){ renderNoQuestions(); return; }
+
+    RUN = {
+      modeKey: modeKey,
+      label: modeCfg.label,
+      items: items,
+      idx: 0,
+      totalMs: modeCfg.min > 0 ? modeCfg.min * 60000 : 0,
+      deadline: modeCfg.min > 0 ? (Date.now() + modeCfg.min * 60000) : 0,
+      timerId: null,
+      timedOut: false,
+      correctCount: 0, total: 0, pct: 0, subMap: {}, wrongList: []
+    };
+    renderRun();
+    if(RUN.totalMs > 0) startTimer();
+  }
+
+  /* ================= Timer ================= */
+  function stopTimer(){ if(RUN && RUN.timerId){ clearInterval(RUN.timerId); RUN.timerId = null; } }
+  function startTimer(){
+    if(!RUN) return;
+    RUN.timerId = setInterval(function(){
+      if(!RUN) return;
+      var remaining = RUN.deadline - Date.now();
+      if(remaining <= 0){
+        clearInterval(RUN.timerId); RUN.timerId = null;
+        finishRun(true);
+        return;
+      }
+      updateTimerDisplay(remaining);
+    }, 500);
+    updateTimerDisplay(RUN.deadline - Date.now());
+  }
+  function updateTimerDisplay(remainingArg){
+    if(!RUN) return;
+    var remaining = (typeof remainingArg === "number") ? remainingArg : (RUN.deadline - Date.now());
+    var val = $("simTimerVal"), box = $("simTimer");
+    if(!val || !box) return;
+    val.textContent = fmtTime(remaining);
+    var frac = RUN.totalMs > 0 ? (remaining / RUN.totalMs) : 1;
+    box.classList.toggle("sim-warn", frac < 0.20);
+  }
+
+  /* ================= Lauf rendern (eine Frage pro Screen) ================= */
+  function renderRun(){
+    if(!RUN) return;
+    var item = RUN.items[RUN.idx];
+    var n = RUN.items.length;
+    var html = "";
+
+    html += "<div class='sim-run-head'><span class='sim-progress'>Frage " + (RUN.idx + 1) + " von " + n + "</span>";
+    if(RUN.totalMs > 0){
+      html += "<span class='sim-timer' id='simTimer'><svg class='i'><use href='#i-clock'/></svg><span id='simTimerVal'>--:--</span></span>";
+    }
+    html += "</div>";
+    html += "<div class='sim-bar'><i style='width:" + Math.round((RUN.idx / n) * 100) + "%'></i></div>";
+
+    html += "<div class='sim-q'>";
+    /* Nur "Kapitel N · Unterthema" - der volle topic-String der Fragenbank
+       ("Management 1 (BMGT) · Goethe-Uni Frankfurt · Kapitel 4 - ...") sprengt
+       auf 375 px drei Zeilen und draengt die Frage aus dem Bild. */
+    html += "<span class='sim-tag'>Kapitel " + item.chapter
+          + (item.q && item.q.subtopic ? " &middot; " + esc(item.q.subtopic) : "") + "</span>";
+    html += "<div class='sim-stem'>" + item.q.stem + "</div>";
+    if(item.q.type === "single"){
+      html += "<div class='sim-opts'>";
+      for(var oi = 0; oi < item.options.length; oi++){
+        html += "<button type='button' class='sim-opt" + (item.given === oi ? " sel" : "") + "' data-oi='" + oi + "'><span>" + item.options[oi] + "</span></button>";
+      }
+      html += "</div>";
+    } else {
+      var val = (item.given != null) ? esc(item.given) : "";
+      html += "<input type='text' inputmode='decimal' class='sim-num' id='simNumInput' placeholder='Zahl eingeben, z. B. 0,29' value='" + val + "'>";
+    }
+    html += "</div>";
+
+    html += "<div class='sim-nav'>";
+    html += "<button type='button' class='btn btn-silver' id='simPrev'" + (RUN.idx === 0 ? " disabled" : "") + "><svg class='i' style='width:15px'><use href='#i-left'/></svg> Zur&uuml;ck</button>";
+    html += "<button type='button' class='btn btn-primary' id='simNext'>" + (RUN.idx === n - 1 ? "Abgeben" : "Weiter") + "</button>";
+    html += "</div>";
+    html += "<button type='button' class='btn btn-ghost btn-sm btn-block' id='simQuit' style='margin-top:10px'>Simulator verlassen</button>";
+
+    simWrap.innerHTML = html;
+    if(RUN.totalMs > 0) updateTimerDisplay();
+  }
+
+  /* ================= Auswertung ================= */
+  function weakestTopics(subMap, limit){
+    var keys = Object.keys(subMap);
+    keys.sort(function(a, b){
+      var ra = subMap[a].correct / subMap[a].total, rb = subMap[b].correct / subMap[b].total;
+      if(ra !== rb) return ra - rb;
+      return subMap[b].total - subMap[a].total;
+    });
+    return keys.slice(0, limit);
+  }
+
+  function scoreRun(run){
+    var items = run.items, i, correctCount = 0;
+    var subMap = {}, wrongList = [], wrongSeen = {};
+    for(i = 0; i < items.length; i++){
+      var it = items[i], q = it.q, ok = false;
+      if(q.type === "single"){
+        ok = (it.given != null) && (it.options[it.given] === q.answer);
+      } else {
+        var raw = it.given;
+        if(raw != null && String(raw).trim() !== ""){
+          var v = parseNum(raw);
+          var tol = (typeof q.tolerance === "number") ? q.tolerance : 0.01;
+          ok = !isNaN(v) && Math.abs(v - q.answer) <= tol;
+        }
+      }
+      it.correct = ok;
+      if(ok) correctCount++;
+      else if(!wrongSeen[q.subtopic]){ wrongSeen[q.subtopic] = true; wrongList.push(q.subtopic); }
+
+      var key = q.subtopic || "Allgemein";
+      if(!subMap[key]) subMap[key] = {correct: 0, total: 0, chapter: it.chapter};
+      subMap[key].total++;
+      if(ok) subMap[key].correct++;
+    }
+    run.correctCount = correctCount;
+    run.total = items.length;
+    run.pct = items.length ? Math.round(100 * correctCount / items.length) : 0;
+    run.subMap = subMap;
+    run.wrongList = wrongList;
+  }
+
+  function answerLine(it){
+    var q = it.q;
+    if(q.type === "single"){
+      var given = (it.given != null) ? it.options[it.given] : null;
+      if(it.correct) return "Deine Antwort: <b>" + given + "</b>";
+      return "Deine Antwort: <b>" + (given != null ? given : "keine Antwort") + "</b> &middot; Richtig w&auml;re: <b>" + q.answer + "</b>";
+    }
+    var rawShown = (it.given != null && String(it.given).trim() !== "") ? esc(String(it.given)) : "keine Antwort";
+    if(it.correct) return "Deine Antwort: <b>" + rawShown + "</b>";
+    return "Deine Antwort: <b>" + rawShown + "</b> &middot; Richtig w&auml;re: <b>" + fmtDe(q.answer) + "</b>";
+  }
+
+  function finishRun(timedOut){
+    if(!RUN) return;
+    stopTimer();
+    RUN.timedOut = !!timedOut;
+    scoreRun(RUN);
+    renderResult();
+    if(typeof window.BK_SIM_WEAK === "function"){
+      try { window.BK_SIM_WEAK(RUN.wrongList); } catch(e){}
+    }
+  }
+
+  function renderResult(){
+    if(!RUN) return;
+    var cls = RUN.pct >= 80 ? "good" : (RUN.pct >= 50 ? "mid" : "bad");
+    var label = RUN.pct >= 80 ? "Sitzt." : (RUN.pct >= 50 ? "Auf einem guten Weg." : "Da ist noch Luft nach oben.");
+    var html = "";
+
+    html += "<div class='scr-h'><span class='eyebrow'>Auswertung &middot; " + esc(RUN.label) + "</span><h1>Dein Ergebnis</h1></div>";
+    if(RUN.timedOut){
+      html += "<p style='color:var(--wrong);font-size:13.5px;margin:-8px 0 14px'>Die Zeit ist abgelaufen &ndash; hier ist deine Auswertung mit allen bisher gegebenen Antworten.</p>";
+    }
+
+    html += "<div class='sim-card sim-score-card'><div class='sim-score " + cls + "'>" +
+      "<span class='sim-score-num'>" + RUN.pct + "&nbsp;%</span>" +
+      "<span class='sim-score-lbl'>" + RUN.correctCount + " von " + RUN.total + " richtig</span></div>" +
+      "<span class='sim-ampel " + cls + "'>" + label + "</span></div>";
+
+    var weakest = weakestTopics(RUN.subMap, 3);
+    if(weakest.length){
+      html += "<div class='sim-card'><div class='sec-lbl' style='margin:0 0 4px'>Deine schw&auml;chsten Themen</div>";
+      for(var w = 0; w < weakest.length; w++){
+        var key = weakest[w], s = RUN.subMap[key];
+        html += "<div class='sim-weak-row'><span>" + esc(key) + "</span><span class='sim-weak-frac'>" + s.correct + "/" + s.total + " &rarr; Kapitel " + s.chapter + "</span></div>";
+      }
+      html += "</div>";
+    }
+
+    html += "<div class='sim-list'>";
+    for(var i = 0; i < RUN.items.length; i++){
+      var it = RUN.items[i], q = it.q;
+      html += "<details class='sim-item " + (it.correct ? "ok" : "bad") + "'>" +
+        "<summary><span class='sim-ic'><svg class='i' style='width:12px'><use href='#i-" + (it.correct ? "check" : "x") + "'/></svg></span>" +
+        "<span class='sim-item-stem'>Frage " + (i + 1) + " &middot; " + esc(q.subtopic || "") + "</span>" +
+        "<svg class='i sim-chev' style='width:15px'><use href='#i-chev'/></svg></summary>" +
+        "<div class='sim-item-body'><div class='sim-stem' style='font-size:15px;margin-bottom:10px'>" + q.stem + "</div>" +
+        "<div class='sim-item-ans'>" + answerLine(it) + "</div>" +
+        "<div>" + q.feedback + "</div></div></details>";
+    }
+    html += "</div>";
+
+    html += "<div class='sim-actions'>" +
+      "<button type='button' class='btn btn-silver btn-block' id='simShare'>Ergebnis teilen</button>" +
+      "<button type='button' class='btn btn-primary btn-block' id='simRepeat'>Nochmal &uuml;ben</button>" +
+      "<button type='button' class='btn btn-ghost btn-sm btn-block' id='simChangeMode'>Anderen Modus w&auml;hlen</button></div>";
+
+    if(!computeFull()){
+      html += "<div class='sim-card sim-buy-card' style='margin-top:14px'><h3>Der vollst&auml;ndige Simulator geh&ouml;rt zum Komplettpaket</h3>" +
+        "<p>Alle Kapitel gemischt, mit echtem Zeitdruck und Marathon-Modus &ndash; im Komplettpaket freigeschaltet.</p>";
+      if(typeof window.BK_SIM_BUY === "function"){
+        html += "<button type='button' class='btn btn-primary btn-block' id='simBuy' style='margin-top:10px'>Komplettpaket ansehen</button>";
+      }
+      html += "</div>";
+    }
+
+    simWrap.innerHTML = html;
+  }
+
+  /* ================= Ergebnis teilen ================= */
+  function doShare(){
+    if(!RUN) return;
+    var url = (typeof window.BK_SIM_SHARE_URL === "string" && window.BK_SIM_SHARE_URL) ? window.BK_SIM_SHARE_URL : (location.origin + "/");
+    var text = "Ich hab gerade " + RUN.correctCount + "/" + RUN.total + " im Klausurchecker-Simulator geschafft 💪 " + url;
+    window.open("https://wa.me/?text=" + encodeURIComponent(text));
+  }
+
+  /* ================= Events (einmalig, delegiert) ================= */
+  simWrap.addEventListener("click", function(e){
+    var el;
+    el = e.target.closest(".sim-mode"); if(el){ startRun(el.getAttribute("data-mode")); return; }
+    el = e.target.closest("#simDemoStart"); if(el){ startRun("demo"); return; }
+    el = e.target.closest(".sim-opt");
+    if(el && RUN){ RUN.items[RUN.idx].given = parseInt(el.getAttribute("data-oi"), 10); renderRun(); return; }
+    el = e.target.closest("#simNext");
+    if(el && RUN){ if(RUN.idx < RUN.items.length - 1){ RUN.idx++; renderRun(); } else { finishRun(false); } return; }
+    el = e.target.closest("#simPrev");
+    if(el && RUN){ if(RUN.idx > 0){ RUN.idx--; renderRun(); } return; }
+    el = e.target.closest("#simQuit");
+    if(el){
+      if(window.confirm("Simulator wirklich verlassen? Dein Fortschritt in diesem Lauf geht verloren.")){ stopTimer(); RUN = null; renderIntro(); }
+      return;
+    }
+    el = e.target.closest("#simRepeat"); if(el){ startRun(LAST_MODE); return; }
+    el = e.target.closest("#simChangeMode"); if(el){ stopTimer(); RUN = null; renderIntro(); return; }
+    el = e.target.closest("#simShare"); if(el){ doShare(); return; }
+    el = e.target.closest("#simBuy"); if(el){ if(typeof window.BK_SIM_BUY === "function") window.BK_SIM_BUY(); return; }
+  });
+  simWrap.addEventListener("input", function(e){
+    if(e.target && e.target.id === "simNumInput" && RUN){ RUN.items[RUN.idx].given = e.target.value; }
+  });
+  simWrap.addEventListener("keydown", function(e){
+    if(e.target && e.target.id === "simNumInput" && e.key === "Enter"){
+      e.preventDefault();
+      var nb = $("simNext"); if(nb) nb.click();
+    }
+  });
+
+  /* ================= Öffentliche Schnittstelle ================= */
+  window.BK_SIM_OPEN = function(){
+    stopTimer();
+    RUN = null;
+    renderIntro();
+  };
+})();
+</script>
+<section id="screen-spick" class="screen"><div class="scr-h"><span class="eyebrow">OFIN</span><h1>Formelsammlung</h1><p>Alle Formeln aus Finanzen 1 auf einen Blick</p></div><div class="spick-print-head">Klausurchecker · Finanzen 1 · Formelsammlung</div><nav class="spick-jump" aria-label="Kapitel-Sprungleiste"><a class="pill" href="#spick-k1">1</a><a class="pill" href="#spick-k2">2</a><a class="pill" href="#spick-k3">3</a><a class="pill" href="#spick-k4">4</a><a class="pill" href="#spick-k5">5</a><a class="pill" href="#spick-k6">6</a><a class="pill" href="#spick-k7">7</a><a class="pill" href="#spick-k8">8</a><a class="pill" href="#spick-k9">9</a></nav><button type="button" id="spickPrintBtn" class="btn btn-silver btn-block spick-printbtn">Als PDF drucken / speichern</button><div class="spick-body"><div class="spick-kapitel" id="spick-k1"><h2 class="spick-kh">Kapitel 1 · Grundlagen: Arbitrage &amp; Barwert</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Barwert (eine Zahlung)</span><div class="spick-formel-zeile"><code>PV = C / (1 + r)^t</code></div><p class="spick-hinweis">C = sichere Zahlung in t Jahren, r = Marktzins (Diskontieren).</p></li><li class="spick-formel"><span class="spick-fname">Barwert (Zahlungsreihe)</span><div class="spick-formel-zeile"><code>PV = C1 / (1+r) + C2 / (1+r)² + ... + CT / (1+r)^T</code></div><p class="spick-hinweis">Einzelbarwerte addieren.</p></li><li class="spick-formel"><span class="spick-fname">Ewige Rente</span><div class="spick-formel-zeile"><code>PV = C / r</code></div><p class="spick-hinweis">Unendlich viele gleiche Zahlungen C - trotzdem endlicher Wert.</p></li><li class="spick-formel"><span class="spick-fname">Rentenbarwert (endlich)</span><div class="spick-formel-zeile"><code>PV = C · [1 - (1+r)^-n] / r = C · RBF</code></div><p class="spick-hinweis">RBF = Rentenbarwertfaktor; n gleiche Zahlungen C.</p></li><li class="spick-formel"><span class="spick-fname">Kapitalwert</span><div class="spick-formel-zeile"><code>NPV = -A0 + Σ Et / (1+r)^t</code></div><p class="spick-hinweis">Investitionsregel: durchfuehren, wenn NPV &gt; 0.</p></li><li class="spick-formel"><span class="spick-fname">Interner Zinsfuss</span><div class="spick-formel-zeile"><code>-A0 + Σ Et / (1+r)^t = 0</code></div><p class="spick-hinweis">r = Nullstelle der Kapitalwertfunktion; investieren, wenn r &gt; Marktzins.</p></li><li class="spick-formel"><span class="spick-fname">Fisher-Separation</span><div class="spick-formel-zeile"><code>C0max = Anfangsvermoegen + Σ NPV aller lohnenden Projekte</code></div><p class="spick-hinweis">Aufgezinst: C1max = C0max · (1 + r).</p></li></ul><p class="spick-merke"><b>Merke:</b> Alles ist Barwert: kuenftige sichere Zahlungen arbitragefrei auf heute abzinsen und aufaddieren - durchgefuehrt wird, was einen positiven Kapitalwert hat. Interner Zinsfuss und…</p></div><div class="spick-kapitel" id="spick-k2"><h2 class="spick-kh">Kapitel 2 · Aktienbewertung (Dividendenmodell &amp; Gordon-Growth)</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Ein-Perioden-Modell</span><div class="spick-formel-zeile"><code>P0 = (E[Div1] + E[P1]) / (1 + rE)</code></div><p class="spick-hinweis">Folien-Notation: BK0 statt P0. Wer zum fairen Kurs kauft, macht ein Null-NPV-Geschaeft.</p></li><li class="spick-formel"><span class="spick-fname">Dividendendiskontierungsmodell (DDM)</span><div class="spick-formel-zeile"><code>P0 = E[Div1]/(1+rE) + E[Div2]/(1+rE)² + E[Div3]/(1+rE)³ + ...</code></div><p class="spick-hinweis">Der Kurs ist der Barwert ALLER kuenftigen Dividenden.</p></li><li class="spick-formel"><span class="spick-fname">Ewige Rente (konstante Dividende)</span><div class="spick-formel-zeile"><code>P0 = E[Div] / rE</code></div><p class="spick-hinweis">Spezialfall des DDM bzw. Gordon-Growth mit g = 0.</p></li><li class="spick-formel"><span class="spick-fname">Gordon-Growth</span><div class="spick-formel-zeile"><code>P0 = E[Div1] / (rE - g)</code></div><p class="spick-hinweis">Nur gueltig fuer g &lt; rE. Im Zaehler die Dividende des naechsten Jahres!</p></li><li class="spick-formel"><span class="spick-fname">Implizite Eigenkapitalkosten</span><div class="spick-formel-zeile"><code>rE = Div1 / P0 + g</code></div><p class="spick-hinweis">Dividendenrendite plus Wachstumsrate - aus dem beobachteten Marktkurs abgelesen.</p></li><li class="spick-formel"><span class="spick-fname">Renditezerlegung</span><div class="spick-formel-zeile"><code>rE = Div1/P0 + (P1 - P0)/P0 = Dividendenrendite + Kursrendite</code></div><p class="spick-hinweis">Im Gordon-Modell ist die Kursrendite gerade die Wachstumsrate g.</p></li><li class="spick-formel"><span class="spick-fname">Unternehmensbewertung (ewige Gewinne)</span><div class="spick-formel-zeile"><code>V0 = E(G) / rWACC</code></div><p class="spick-hinweis">Dieselbe Ewigkeits-Logik: Gewinne statt Dividenden, gewichteter Kapitalkostensatz statt rE.</p></li></ul><p class="spick-merke"><b>Merke:</b> Eine Aktie ist ein Barwert: Kaufpreis = zukuenftige Ertraege / (1 + Zins). Im Gordon-Zaehler steht immer die Dividende des NAECHSTEN Jahres (Div1) - und die Formel gilt nur fuer g…</p></div><div class="spick-kapitel" id="spick-k3"><h2 class="spick-kh">Kapitel 3 · Anleihen, Renten &amp; Zinsstruktur</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Barwert</span><div class="spick-formel-zeile"><code>PV = C / (1 + r)^t</code></div><p class="spick-hinweis">C = sichere Zahlung in t Jahren, r = Marktzins.</p></li><li class="spick-formel"><span class="spick-fname">Rentenbarwert (Annuität)</span><div class="spick-formel-zeile"><code>PV = (C / r) · (1 - (1 + r)^-T)</code></div><p class="spick-hinweis">T Jahre lang die feste Zahlung C (nachschüssig).</p></li><li class="spick-formel"><span class="spick-fname">Ewige Rente</span><div class="spick-formel-zeile"><code>PV = C / r</code></div></li><li class="spick-formel"><span class="spick-fname">Ewige Rente mit Wachstum (Gordon-Rente)</span><div class="spick-formel-zeile"><code>PV = C_1 / (r - g)</code></div><p class="spick-hinweis">C_1 = erste Zahlung in t=1, danach jedes Jahr mit Rate g wachsend (nur sinnvoll für r &gt; g).</p></li><li class="spick-formel"><span class="spick-fname">Nullkuponanleihe (Zerobond)</span><div class="spick-formel-zeile"><code>Kurs = Nominal / (1 + r)^T</code></div><p class="spick-hinweis">Nur eine Zahlung am Ende. Nach r aufgelöst: r = (Nominal / Kurs)^(1/T) - 1 (Effektivrendite).</p></li><li class="spick-formel"><span class="spick-fname">Kuponanleihe</span><div class="spick-formel-zeile"><code>Kurs = (Kupon / r) · (1 - (1 + r)^-T) + Nominal / (1 + r)^T</code></div><p class="spick-hinweis">Kupon = Kuponsatz · Nominalwert; Kupon-Rente plus Nullkupon-Baustein.</p></li><li class="spick-formel"><span class="spick-fname">Annuitätendarlehen (Kreditrate)</span><div class="spick-formel-zeile"><code>Rate = Kredit / [(1/r) · (1 - (1 + r)^-T)]</code></div><p class="spick-hinweis">Umkehrung der Rentenbarwertformel: gleiche jährliche Rate, die den Kredit in T Jahren tilgt.</p></li><li class="spick-formel"><span class="spick-fname">Terminzins (Forward Rate)</span><div class="spick-formel-zeile"><code>1 + f_(t-1,t) = (1 + r_t)^t / (1 + r_(t-1))^(t-1)</code></div><p class="spick-hinweis">Aus zwei benachbarten Kassazinsen r_(t-1) und r_t.</p></li></ul><p class="spick-merke"><b>Merke:</b> Ob Rente, Anleihe oder Kredit – jede Bewertung ist im Kern Diskontieren: künftige Zahlungen auf heute abzinsen und aufaddieren. Für den Kurs-Schnellcheck gilt: Kupon über…</p></div><div class="spick-kapitel" id="spick-k4"><h2 class="spick-kh">Kapitel 4 · Risiko &amp; riskante Zahlungsströme</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Erwartungswert</span><div class="spick-formel-zeile"><code>E(r) = μ = Σ p_i · r_i</code></div><p class="spick-hinweis">Jede Rendite r_i mit ihrer Wahrscheinlichkeit p_i gewichten; p_i ≥ 0, Summe aller p_i = 1.</p></li><li class="spick-formel"><span class="spick-fname">Varianz</span><div class="spick-formel-zeile"><code>Var(r) = σ² = Σ p_i · (r_i - μ)²</code></div><p class="spick-hinweis">Wahrscheinlichkeitsgewichtete quadrierte Abweichungen vom Erwartungswert (in %-Punkten²).</p></li><li class="spick-formel"><span class="spick-fname">Standardabweichung</span><div class="spick-formel-zeile"><code>σ = Wurzel aus Var(r)</code></div><p class="spick-hinweis">Gleiche Einheit wie die Rendite – das gebräuchlichste Risikomaß.</p></li><li class="spick-formel"><span class="spick-fname">Risikoprämie</span><div class="spick-formel-zeile"><code>Risikoprämie = r - r_f</code></div><p class="spick-hinweis">Renditeaufschlag über den risikolosen Zins als Ausgleich fürs Tragen des Risikos.</p></li><li class="spick-formel"><span class="spick-fname">Diskontierung unter Unsicherheit</span><div class="spick-formel-zeile"><code>Barwert = E[C] / (1 + r_f + Risikoprämie)</code></div><p class="spick-hinweis">Die erwartete Zahlung mit dem risikoangepassten Zins abzinsen – je höher die Prämie, desto niedriger der Barwert.</p></li><li class="spick-formel"><span class="spick-fname">Kovarianz &amp; Korrelation</span><div class="spick-formel-zeile"><code>σ_AB = Σ p_i · (r_iA - μ_A) · (r_iB - μ_B);   ρ_AB = σ_AB / (σ_A · σ_B)</code></div><p class="spick-hinweis">ρ_AB liegt immer zwischen -1 und +1: +1 gleichläufig, -1 gegenläufig, 0 unkorreliert.</p></li></ul><p class="spick-merke"><b>Merke:</b> Unter Unsicherheit beschreibst du eine Anlage mit ZWEI Zahlen: μ = E(r) sagt, was im Schnitt kommt, σ sagt, wie stark es schwankt. Bewertet wird immer die ERWARTETE Zahlung mit r…</p></div><div class="spick-kapitel" id="spick-k5"><h2 class="spick-kh">Kapitel 5 · Portfoliotheorie &amp; Diversifikation</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Korrelation</span><div class="spick-formel-zeile"><code>ρ_AB = σ_AB / (σ_A · σ_B)</code></div><p class="spick-hinweis">Normierte Kovarianz; es gilt immer -1 ≤ ρ_AB ≤ +1.</p></li><li class="spick-formel"><span class="spick-fname">Kovarianz aus Korrelation</span><div class="spick-formel-zeile"><code>σ_AB = ρ_AB · σ_A · σ_B</code></div><p class="spick-hinweis">Umgestellte Korrelationsformel – dieser Baustein steckt im Kovarianzterm der Portfoliovarianz.</p></li><li class="spick-formel"><span class="spick-fname">Portfoliorendite (2 Anlagen)</span><div class="spick-formel-zeile"><code>μ_PF = x_A · μ_A + x_B · μ_B</code></div><p class="spick-hinweis">Gewichteter Durchschnitt der Einzelrenditen; x_A + x_B = 1. Kein Korrelationsterm.</p></li><li class="spick-formel"><span class="spick-fname">Portfoliovarianz (2 Anlagen)</span><div class="spick-formel-zeile"><code>σ_PF² = x_A² · σ_A² + x_B² · σ_B² + 2 · x_A · x_B · ρ_AB · σ_A · σ_B</code></div><p class="spick-hinweis">Der dritte Summand ist der Kovarianzterm (2 · x_A · x_B · σ_AB) – er drückt das Risiko, sobald ρ &lt; +1.</p></li><li class="spick-formel"><span class="spick-fname">Portfoliorisiko</span><div class="spick-formel-zeile"><code>σ_PF = (σ_PF²)^(1/2)</code></div><p class="spick-hinweis">Wurzel aus der Varianz. Nur im Grenzfall ρ = +1 gilt: σ_PF = x_A · σ_A + x_B · σ_B (gewichteter Durchschnitt).</p></li></ul><p class="spick-merke"><b>Merke:</b> Die Portfoliorendite ist immer der gewichtete Durchschnitt – das Portfoliorisiko fast nie: Sobald ρ &lt; +1, drückt der Kovarianzterm das Risiko unter den gewichteten Durchschnitt…</p></div><div class="spick-kapitel" id="spick-k6"><h2 class="spick-kh">Kapitel 6 · CAPM &amp; Kapitalkosten</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Beta</span><div class="spick-formel-zeile"><code>β_i = Cov(R_i, R_M) / Var(R_M)</code></div><p class="spick-hinweis">Misst nur das systematische Marktrisiko; der Markt selbst hat β = 1.</p></li><li class="spick-formel"><span class="spick-fname">Marktrisikoprämie</span><div class="spick-formel-zeile"><code>MRP = r_M - r_f</code></div><p class="spick-hinweis">Preis für eine Einheit Marktrisiko; zugleich die Steigung der Wertpapiermarktlinie (in β).</p></li><li class="spick-formel"><span class="spick-fname">CAPM / SML</span><div class="spick-formel-zeile"><code>r_i = r_f + β_i · (r_M - r_f)</code></div><p class="spick-hinweis">Faire erwartete Rendite = Eigenkapitalkosten. Sonderfall β = 0: r = r_f.</p></li><li class="spick-formel"><span class="spick-fname">Marktpreis des Risikos</span><div class="spick-formel-zeile"><code>λ = (r_M - r_f) / Var(R_M)</code></div><p class="spick-hinweis">Risikoprämie pro Einheit Varianz; Steigung der Kapitalmarktlinie. CAPM in Kovarianzform: r_i = r_f + λ · Cov(R_i, R_M).</p></li><li class="spick-formel"><span class="spick-fname">Beta bei Verschuldung</span><div class="spick-formel-zeile"><code>β_EK = β_GK · (EK + FK) / EK</code></div><p class="spick-hinweis">Bei risikolosem FK (β_FK = 0). Das Geschäftsrisiko β_GK ist durch das Investitionsprogramm fix; Verschuldung hebelt das EK-Beta.</p></li></ul><p class="spick-merke"><b>Merke:</b> Bezahlt wird nur das Marktrisiko: Das unsystematische Risiko lässt sich kostenlos wegdiversifizieren, vergütet wird allein das Beta – nicht die Gesamtschwankung σ. Also r_E = r_f…</p></div><div class="spick-kapitel" id="spick-k7"><h2 class="spick-kh">Kapitel 7 · Optionsbewertung</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Payoff Long Call</span><div class="spick-formel-zeile"><code>Payoff = max(S_T - K, 0)</code></div><p class="spick-hinweis">Ausgeübt wird nur über dem Basispreis; darunter lässt man den Call verfallen.</p></li><li class="spick-formel"><span class="spick-fname">Payoff Long Put</span><div class="spick-formel-zeile"><code>Payoff = max(K - S_T, 0)</code></div><p class="spick-hinweis">Spiegelbildlich: Der Put gewinnt, wenn der Kurs unter den Basispreis fällt.</p></li><li class="spick-formel"><span class="spick-fname">Break-even Long Call</span><div class="spick-formel-zeile"><code>Break-even = K + Prämie</code></div><p class="spick-hinweis">Gewinn = Payoff - Prämie; erst über dem Break-even wird der Long Call profitabel.</p></li><li class="spick-formel"><span class="spick-fname">Hedge-Ratio (Option-Delta)</span><div class="spick-formel-zeile"><code>Δ = (C_u - C_d) / (S_u - S_d)</code></div><p class="spick-hinweis">Zahl der Aktien, die die Option nachbildet. Beim Put negativ (C durch P ersetzen).</p></li><li class="spick-formel"><span class="spick-fname">Replikationsportfolio</span><div class="spick-formel-zeile"><code>B = (C_u - Δ · S_u) / (1 + r)   und   C_0 = Δ · S_0 + B</code></div><p class="spick-hinweis">Negatives B = Kreditaufnahme, positives B = Geldanlage. C_0 ist der einzige arbitragefreie Optionspreis.</p></li><li class="spick-formel"><span class="spick-fname">Put-Call-Parität</span><div class="spick-formel-zeile"><code>P_0 = C_0 + K/(1+r) - S_0</code></div><p class="spick-hinweis">Gilt für gleichen Basispreis und gleiche Laufzeit; ein Optionspreis bestimmt den anderen.</p></li></ul><p class="spick-merke"><b>Merke:</b> Eine Option ist ein Recht ohne Pflicht – bewertet wird sie nicht mit Wahrscheinlichkeiten, sondern über No-Arbitrage: Ein Portfolio aus Δ Aktien und Kredit liefert in beiden…</p></div><div class="spick-kapitel" id="spick-k8"><h2 class="spick-kh">Kapitel 8 · Kapitalstruktur (Modigliani-Miller)</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">WACC (Kapitalkosten)</span><div class="spick-formel-zeile"><code>r_wacc = EK/V · r_E + FK/V · r_D</code></div><p class="spick-hinweis">Gewichteter Durchschnitt der Renditeforderungen; V = EK + FK.</p></li><li class="spick-formel"><span class="spick-fname">MM II (Kernformel)</span><div class="spick-formel-zeile"><code>r_E = r_wacc + (r_wacc - r_D) · l</code></div><p class="spick-hinweis">l = FK/EK (Verschuldungsgrad). r_E steigt linear mit der Verschuldung, r_wacc bleibt konstant.</p></li><li class="spick-formel"><span class="spick-fname">Unternehmenswert (ewige Rente)</span><div class="spick-formel-zeile"><code>V = EK + FK = E(CF) / r_wacc</code></div><p class="spick-hinweis">MM I: im vollkommenen Markt unabhängig von der Kapitalstruktur.</p></li><li class="spick-formel"><span class="spick-fname">Beta-Hebel</span><div class="spick-formel-zeile"><code>β_EK = β_Asset · (1 + l)</code></div><p class="spick-hinweis">Verschuldung hebelt das systematische Risiko des Eigenkapitals (β_FK = 0).</p></li><li class="spick-formel"><span class="spick-fname">Tax Shield (dauerhaftes FK)</span><div class="spick-formel-zeile"><code>Barwert Tax Shield = τ · FK</code></div><p class="spick-hinweis">V_L = V_U + τ · FK. Jährliche Ersparnis τ · r_D · FK, als ewige Rente mit r_D abgezinst.</p></li><li class="spick-formel"><span class="spick-fname">Trade-off-Theorie</span><div class="spick-formel-zeile"><code>V_L = V_U + Barwert Tax Shield - Barwert Insolvenzkosten</code></div><p class="spick-hinweis">Optimum: Grenz-Steuervorteil = erwartete Grenz-Insolvenzkosten.</p></li></ul><p class="spick-merke"><b>Merke:</b> Im vollkommenen Markt ist die Finanzierung irrelevant: Verschuldung hebelt nur r_E und Beta (MM II), Wert und r_wacc bleiben konstant (MM I). Erst Steuern (V_L = V_U + τ · FK) und…</p></div><div class="spick-kapitel" id="spick-k9"><h2 class="spick-kh">Kapitel 9 · Klausurtraining</h2><ul class="spick-formeln"><li class="spick-formel"><span class="spick-fname">Kapitalwert (NPV)</span><div class="spick-formel-zeile"><code>NPV = -I_0 + CF_1/(1+r) + CF_2/(1+r)² + …</code></div><p class="spick-hinweis">Entscheidungsregel: NPV &gt; 0 → Projekt durchführen.</p></li><li class="spick-formel"><span class="spick-fname">Gordon-Growth</span><div class="spick-formel-zeile"><code>P_0 = D_1 / (r_E - g)</code></div><p class="spick-hinweis">Das Wachstum g wird im Nenner ABGEZOGEN – beliebte Fehlerfalle.</p></li><li class="spick-formel"><span class="spick-fname">Wertpapiermarktlinie (CAPM)</span><div class="spick-formel-zeile"><code>μ = r_f + (μ_M - r_f) · β</code></div><p class="spick-hinweis">Punkte oberhalb der SML = unterbewertet, unterhalb = überbewertet.</p></li><li class="spick-formel"><span class="spick-fname">Fairer Aktienkurs</span><div class="spick-formel-zeile"><code>P_0 = E(CF_1) / (1 + μ)</code></div><p class="spick-hinweis">Mit der CAPM-Sollrendite μ abzinsen, nicht mit dem risikolosen Zins.</p></li><li class="spick-formel"><span class="spick-fname">Put-Call-Parität</span><div class="spick-formel-zeile"><code>P = C - S + K/(1+r)</code></div><p class="spick-hinweis">Gleicher Basispreis, gleiche Laufzeit – ein Optionspreis bestimmt den anderen.</p></li><li class="spick-formel"><span class="spick-fname">WACC &amp; MM II (ohne Steuern)</span><div class="spick-formel-zeile"><code>WACC = w_FK · i + w_EK · e   und   e = k + (k - i) · FK/EK</code></div><p class="spick-hinweis">Gewichte zu Marktwerten; ohne Steuern bleibt der WACC bei jeder Kapitalstruktur konstant.</p></li></ul><p class="spick-merke"><b>Merke:</b> Das Klausurtraining bündelt Kapitel 1–8: Wer je Block das eine Kernwerkzeug parat hat – NPV &gt; 0, Barwert &amp; Gordon-Growth, Erwartungswert &amp; Diversifikation, SML, Duplikation &amp;…</p></div></div></section>
+<style id="spickStyle">
+#screen-spick{--spick-mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace}
+#screen-spick .spick-print-head{display:none}
+#screen-spick .spick-jump{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+#screen-spick .spick-jump .pill{padding:10px 14px;min-height:44px;font-size:13px;cursor:pointer}
+#screen-spick .spick-printbtn{margin:0 0 22px}
+#screen-spick .spick-body{display:flex;flex-direction:column;gap:14px}
+#screen-spick .spick-kapitel{background:var(--surface);border:1px solid var(--line-2);border-radius:16px;padding:16px 16px 14px;box-shadow:var(--sh-1);scroll-margin-top:74px}
+#screen-spick .spick-kh{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--text);margin-bottom:10px;overflow-wrap:anywhere}
+#screen-spick .spick-formeln{list-style:none;display:flex;flex-direction:column;gap:12px}
+#screen-spick .spick-formel{padding-bottom:12px;border-bottom:1px solid var(--hair)}
+#screen-spick .spick-formel:last-child{padding-bottom:0;border-bottom:none}
+#screen-spick .spick-fname{display:block;font-weight:700;font-size:14px;color:var(--text);margin-bottom:5px;overflow-wrap:anywhere}
+#screen-spick .spick-formel-zeile{overflow-x:auto;-webkit-overflow-scrolling:touch}
+#screen-spick .spick-formel-zeile code{display:inline-block;min-width:100%;box-sizing:border-box;font-family:var(--spick-mono);font-size:13.5px;line-height:1.5;color:var(--accent-deep);background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+#screen-spick .spick-hinweis{margin-top:5px;font-size:12px;color:var(--text-2);overflow-wrap:anywhere}
+#screen-spick .spick-merke{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2);font-size:12.5px;color:var(--text-2);overflow-wrap:anywhere}
+#screen-spick .spick-merke b{color:var(--text)}
+#screen-spick .spick-empty{font-size:13px;color:var(--text-3);font-style:italic}
+
+@media print{
+  body *{visibility:hidden!important}
+  #screen-spick,#screen-spick *{visibility:visible!important}
+  #screen-spick{display:block!important;position:absolute!important;left:0;top:0;width:100%;margin:0;padding:0;background:#fff!important;color:#000!important}
+  #screen-spick .scr-h,#screen-spick .spick-jump,#screen-spick .spick-printbtn{display:none!important}
+  #screen-spick .spick-print-head{display:block!important;font-family:var(--sans),Arial,sans-serif;font-size:9pt;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#000!important;border-bottom:1px solid #000;padding-bottom:3mm;margin-bottom:4mm}
+  #screen-spick .spick-body{display:block;column-count:2;column-gap:8mm}
+  #screen-spick .spick-kapitel{background:#fff!important;border:1px solid #000!important;box-shadow:none!important;border-radius:0;padding:2mm 3mm;margin:0 0 3mm;break-inside:avoid;page-break-inside:avoid}
+  #screen-spick .spick-kh{font-size:9.5pt;color:#000!important;margin-bottom:2mm}
+  #screen-spick .spick-formeln{gap:2mm}
+  #screen-spick .spick-formel{padding-bottom:1.5mm;border-bottom:.2mm solid #000}
+  #screen-spick .spick-fname{font-size:9pt;color:#000!important;margin-bottom:1mm}
+  #screen-spick .spick-formel-zeile code{font-size:8.5pt;line-height:1.35;color:#000!important;background:none!important;border:.2mm solid #000!important;border-radius:0;padding:1mm 1.5mm}
+  #screen-spick .spick-hinweis{font-size:7.5pt;color:#222!important;margin-top:1mm}
+  #screen-spick .spick-merke{font-size:8pt;color:#000!important;border-top:.2mm solid #000;margin-top:2mm;padding-top:1.5mm}
+  #screen-spick .spick-merke b{color:#000!important}
+  #screen-spick .spick-empty{color:#000!important}
+  @page{margin:10mm 8mm}
+}
+</style>
+<script id="spickCore">
+(function(){
+  var btn = document.getElementById('spickPrintBtn');
+  if(btn){
+    btn.addEventListener('click', function(){
+      window.print();
+    });
+  }
+})();
+</script>
+<section id="screen-plan" class="screen"><div class="scr-h"><span class="eyebrow">OFIN</span><h1>Notfallplan bis zur Klausur</h1><p>Dein Rückwärtsplan für Finanzen 1 – realistisch statt hoffnungsvoll gerechnet, ab jetzt bis zur Klausur.</p></div><script id="planData" type="application/json">{
+  "fach": "OFIN",
+  "klausur": "2026-07-29T11:00",
+  "summe_min": 615,
+  "kapitel": [
+    {
+      "n": 1,
+      "titel": "Grundlagen: Arbitrage & Barwert",
+      "min": 80,
+      "min_von": 65,
+      "min_bis": 105,
+      "basis": {
+        "woerter": 2229,
+        "fragen": 10,
+        "aufgaben": 14
+      }
+    },
+    {
+      "n": 2,
+      "titel": "Aktienbewertung (Dividendenmodell & Gordon-Growth)",
+      "min": 85,
+      "min_von": 70,
+      "min_bis": 110,
+      "basis": {
+        "woerter": 2343,
+        "fragen": 10,
+        "aufgaben": 15
+      }
+    },
+    {
+      "n": 3,
+      "titel": "Anleihen, Renten & Zinsstruktur",
+      "min": 65,
+      "min_von": 50,
+      "min_bis": 85,
+      "basis": {
+        "woerter": 1762,
+        "fragen": 0,
+        "aufgaben": 14
+      }
+    },
+    {
+      "n": 4,
+      "titel": "Risiko & riskante Zahlungsströme",
+      "min": 65,
+      "min_von": 50,
+      "min_bis": 85,
+      "basis": {
+        "woerter": 2233,
+        "fragen": 0,
+        "aufgaben": 14
+      }
+    },
+    {
+      "n": 5,
+      "titel": "Portfoliotheorie & Diversifikation",
+      "min": 60,
+      "min_von": 50,
+      "min_bis": 80,
+      "basis": {
+        "woerter": 2069,
+        "fragen": 0,
+        "aufgaben": 12
+      }
+    },
+    {
+      "n": 6,
+      "titel": "CAPM & Kapitalkosten",
+      "min": 60,
+      "min_von": 50,
+      "min_bis": 80,
+      "basis": {
+        "woerter": 2061,
+        "fragen": 0,
+        "aufgaben": 13
+      }
+    },
+    {
+      "n": 7,
+      "titel": "Optionsbewertung",
+      "min": 60,
+      "min_von": 50,
+      "min_bis": 80,
+      "basis": {
+        "woerter": 2232,
+        "fragen": 0,
+        "aufgaben": 12
+      }
+    },
+    {
+      "n": 8,
+      "titel": "Kapitalstruktur (Modigliani-Miller)",
+      "min": 65,
+      "min_von": 50,
+      "min_bis": 85,
+      "basis": {
+        "woerter": 2286,
+        "fragen": 0,
+        "aufgaben": 13
+      }
+    },
+    {
+      "n": 9,
+      "titel": "Klausurtraining",
+      "min": 75,
+      "min_von": 60,
+      "min_bis": 100,
+      "basis": {
+        "woerter": 2059,
+        "fragen": 10,
+        "aufgaben": 13
+      }
+    }
+  ]
+}</script><p class="plan-fallback" id="planFallback" hidden>Für diesen Plan fehlt ein gültiges Klausurdatum. Sprich uns kurz an, dann tragen wir es nach.</p><div class="plan-live" id="planLive"><div class="plan-countdown" id="planCountdown"><span class="plan-cd-label">Noch bis zur Klausur</span><span class="plan-cd-value" id="planCountdownValue">wird berechnet …</span></div><p class="plan-honest" id="planHonest"></p><div class="plan-timeline" id="planTimeline"></div><div class="plan-optional" id="planOptional" hidden><p class="plan-sec-lbl">Optional, falls Zeit bleibt</p><ul class="plan-optlist" id="planOptList"></ul></div></div><div class="plan-done" id="planDone" hidden><div class="plan-donecard"><h2>Die Klausur ist geschrieben.</h2><p>Jetzt erst mal durchatmen – das Lernen ist getan, der Rest liegt nicht mehr in deiner Hand.</p><p>10&nbsp;€ Cashback für dein Feedback: Schreib uns kurz, wie die Vorbereitung war.</p></div></div></section>
+<style id="planStyle">
+#screen-plan .plan-countdown{background:var(--surface);border:1px solid var(--line-2);border-radius:16px;padding:18px;text-align:center;box-shadow:var(--sh-1);margin-bottom:16px}
+#screen-plan .plan-cd-label{display:block;font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+#screen-plan .plan-cd-value{display:block;font-family:var(--serif);font-weight:600;font-size:26px;color:var(--text)}
+#screen-plan .plan-cd-value.is-urgent{color:var(--wrong)}
+#screen-plan .plan-honest{font-size:13px;line-height:1.5;color:var(--text-2);background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;margin-bottom:18px;overflow-wrap:anywhere}
+#screen-plan .plan-sec-lbl{font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);margin:22px 2px 10px}
+#screen-plan .plan-timeline{display:flex;flex-direction:column;gap:10px}
+#screen-plan .plan-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line-2);border-radius:14px;padding:11px 12px;box-shadow:var(--sh-1)}
+#screen-plan .plan-item.is-reserved{border-style:dashed}
+#screen-plan .plan-item.is-sim{border-color:var(--accent-deep)}
+#screen-plan .plan-item.is-done{background:var(--done-bg);border-color:transparent}
+#screen-plan .plan-time{flex:none;width:82px;font-family:var(--sans);font-weight:600;font-size:11.5px;line-height:1.35;color:var(--text-2);overflow-wrap:anywhere}
+#screen-plan .plan-main{flex:1;min-width:0}
+#screen-plan .plan-title{display:block;font-size:14px;font-weight:600;color:var(--text);overflow-wrap:anywhere}
+#screen-plan .plan-sub{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px}
+#screen-plan .plan-check{flex:none;width:44px;height:44px;min-height:44px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text-2);display:grid;place-items:center;cursor:pointer;font-size:16px;font-family:inherit}
+#screen-plan .plan-check.is-checked{background:var(--done);border-color:var(--done);color:#fff}
+#screen-plan .plan-optional{margin-top:4px}
+#screen-plan .plan-optlist{list-style:none;display:flex;flex-direction:column;gap:8px}
+#screen-plan .plan-optlist li{background:var(--surface-2);border:1px dashed var(--line-2);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text-2);display:flex;align-items:center;justify-content:space-between;gap:8px}
+#screen-plan .plan-optlist .pill{flex:none}
+#screen-plan .plan-donecard{background:var(--surface);border:1px solid var(--line-2);border-radius:18px;padding:26px 20px;text-align:center;box-shadow:var(--sh-2)}
+#screen-plan .plan-donecard h2{font-family:var(--serif);font-size:20px;color:var(--text);margin-bottom:12px}
+#screen-plan .plan-donecard p{font-size:14px;line-height:1.55;color:var(--text-2);margin-top:10px}
+#screen-plan .plan-fallback{font-size:13px;color:var(--text-2);padding:14px 2px}
+@media (max-width:340px){
+  #screen-plan .plan-time{width:70px;font-size:11px}
+}
+</style>
+<script id="planCore">
+(function(){
+  'use strict';
+
+  var WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  var WIN_START = 8, WIN_END = 22;      // Lernfenster
+  var WACH_START = 7, WACH_END = 23;    // Annahme (Doku Punkt 3): weiter als das Lernfenster
+  var MAX_BLOCK = 90, BREAK_MIN = 15, MIN_SLIVER = 10;
+  var RESERVED_MS = 2 * 60 * 60 * 1000;
+  var SIM_MIN = 45;
+
+  function pad2(n){
+    n = Math.floor(n);
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  function sameDay(a, b){
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function parseLocalDateTime(str){
+    if(!str || typeof str !== 'string'){ return null; }
+    var m = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if(!m){ return null; }
+    var d = new Date(
+      parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
+      parseInt(m[4], 10), parseInt(m[5], 10), 0, 0
+    );
+    if(isNaN(d.getTime())){ return null; }
+    return d;
+  }
+
+  function roundUpMinutes(d, step){
+    var ms = d.getTime();
+    var stepMs = step * 60000;
+    var rem = ms % stepMs;
+    if(rem === 0){ return new Date(ms); }
+    return new Date(ms + (stepMs - rem));
+  }
+
+  function clampWindow(d, startH, endH){
+    var t = new Date(d.getTime());
+    if(t.getHours() < startH){
+      t.setHours(startH, 0, 0, 0);
+      return t;
+    }
+    if(t.getHours() >= endH){
+      t.setDate(t.getDate() + 1);
+      t.setHours(startH, 0, 0, 0);
+      return t;
+    }
+    return t;
+  }
+
+  function fmtSlot(start, end){
+    return WD[start.getDay()] + ' ' + pad2(start.getHours()) + ':' + pad2(start.getMinutes()) +
+      '–' + pad2(end.getHours()) + ':' + pad2(end.getMinutes());
+  }
+
+  function wakingMinutesBetween(a, b, startH, endH){
+    var total = 0;
+    var day = new Date(a.getTime());
+    day.setHours(0, 0, 0, 0);
+    var guard = 0;
+    while(day.getTime() <= b.getTime() && guard < 60){
+      var winStart = new Date(day.getTime()); winStart.setHours(startH, 0, 0, 0);
+      var winEnd = new Date(day.getTime()); winEnd.setHours(endH, 0, 0, 0);
+      var lo = Math.max(winStart.getTime(), a.getTime());
+      var hi = Math.min(winEnd.getTime(), b.getTime());
+      if(hi > lo){ total += (hi - lo) / 60000; }
+      day = new Date(day.getTime() + 24 * 3600000);
+      guard++;
+    }
+    return total;
+  }
+
+  function buildPlan(kapitelRaw, now, klausurDate){
+    var deadline = new Date(klausurDate.getTime() - RESERVED_MS);
+    var kapitel = (kapitelRaw || []).slice();
+    kapitel.sort(function(a, b){ return (a.n || 0) - (b.n || 0); });
+
+    var cursor = clampWindow(roundUpMinutes(now, 5), WIN_START, WIN_END);
+    var entries = [];
+    var stopped = false;
+    var lastScheduledIndex = -1;
+    var i, kap, remaining, part, placed, dayEnd, limit, availMin, blockLen, start, end;
+
+    for(i = 0; i < kapitel.length; i++){
+      if(stopped){ break; }
+      kap = kapitel[i];
+      remaining = Math.max(0, kap.min || 0);
+      part = 0;
+      placed = false;
+
+      while(remaining > 0){
+        cursor = clampWindow(cursor, WIN_START, WIN_END);
+        if(cursor.getTime() >= deadline.getTime()){ stopped = true; break; }
+
+        dayEnd = new Date(cursor.getTime());
+        dayEnd.setHours(WIN_END, 0, 0, 0);
+        limit = Math.min(dayEnd.getTime(), deadline.getTime());
+        availMin = Math.floor((limit - cursor.getTime()) / 60000);
+
+        if(availMin < MIN_SLIVER){
+          cursor = new Date(dayEnd.getTime());
+          continue;
+        }
+
+        blockLen = Math.min(MAX_BLOCK, remaining, availMin);
+        start = new Date(cursor.getTime());
+        end = new Date(start.getTime() + blockLen * 60000);
+        part++;
+        entries.push({
+          type: 'kapitel', id: 'k' + kap.n + '-' + part, n: kap.n, titel: kap.titel,
+          start: start, end: end, min: blockLen, mehrteilig: (blockLen < kap.min) || part > 1
+        });
+        placed = true;
+        remaining -= blockLen;
+        cursor = new Date(end.getTime() + BREAK_MIN * 60000);
+      }
+
+      if(placed){ lastScheduledIndex = i; }
+      if(stopped || !placed){ stopped = true; break; }
+    }
+
+    var optional = kapitel.slice(lastScheduledIndex + 1);
+
+    if(optional.length > 0){
+      var vorabend = new Date(klausurDate.getTime());
+      vorabend.setDate(vorabend.getDate() - 1);
+      vorabend.setHours(19, 0, 0, 0);
+      var simStart = vorabend;
+      var j, e;
+      for(j = 0; j < entries.length; j++){
+        e = entries[j];
+        if(sameDay(e.start, vorabend) && e.end.getTime() > simStart.getTime()){
+          simStart = new Date(e.end.getTime() + BREAK_MIN * 60000);
+        }
+      }
+      simStart = clampWindow(simStart, WIN_START, WIN_END);
+      var simEnd = new Date(simStart.getTime() + SIM_MIN * 60000);
+      entries.push({
+        type: 'sim', id: 'sim', titel: 'Klausursimulator', start: simStart, end: simEnd, min: SIM_MIN
+      });
+    }
+
+    entries.push({
+      type: 'reserved', id: 'reserved', titel: 'Formelsammlung durchgehen + ankommen',
+      start: deadline, end: klausurDate, min: Math.round(RESERVED_MS / 60000)
+    });
+
+    entries.sort(function(a, b){ return a.start.getTime() - b.start.getTime(); });
+
+    return { entries: entries, optional: optional };
+  }
+
+  function loadState(key){
+    try{
+      var raw = window.localStorage.getItem(key);
+      if(!raw){ return {}; }
+      var parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === 'object') ? parsed : {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function saveState(key, state){
+    try{
+      window.localStorage.setItem(key, JSON.stringify(state));
+    }catch(e){ /* ignore (privater Modus / voller Speicher) */ }
+  }
+
+  function renderEntry(entry, state, storageKey){
+    var item = document.createElement('div');
+    item.className = 'plan-item';
+    if(entry.type === 'reserved'){ item.className += ' is-reserved'; }
+    if(entry.type === 'sim'){ item.className += ' is-sim'; }
+    if(state[entry.id]){ item.className += ' is-done'; }
+
+    var time = document.createElement('div');
+    time.className = 'plan-time';
+    time.textContent = fmtSlot(entry.start, entry.end);
+    item.appendChild(time);
+
+    var main = document.createElement('div');
+    main.className = 'plan-main';
+    var title = document.createElement('span');
+    title.className = 'plan-title';
+    var titleText = entry.titel;
+    if(entry.type === 'kapitel' && entry.mehrteilig){ titleText += ' – Teil'; }
+    title.textContent = titleText;
+    main.appendChild(title);
+    var sub = document.createElement('span');
+    sub.className = 'plan-sub';
+    sub.textContent = entry.min + ' Min';
+    main.appendChild(sub);
+    item.appendChild(main);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'plan-check';
+    if(state[entry.id]){ btn.className += ' is-checked'; }
+    btn.textContent = '✓';
+    btn.setAttribute('aria-label', 'Erledigt: ' + entry.titel);
+    btn.addEventListener('click', function(){
+      var nowChecked = !state[entry.id];
+      if(nowChecked){ state[entry.id] = true; } else { delete state[entry.id]; }
+      saveState(storageKey, state);
+      if(nowChecked){
+        item.className += ' is-done';
+        btn.className += ' is-checked';
+      }else{
+        item.className = item.className.replace(' is-done', '');
+        btn.className = btn.className.replace(' is-checked', '');
+      }
+    });
+    item.appendChild(btn);
+
+    return item;
+  }
+
+  function renderPlan(plan, klausurDate, now, storageKey){
+    var state = loadState(storageKey);
+    var timeline = document.getElementById('planTimeline');
+    var i;
+    if(timeline){
+      for(i = 0; i < plan.entries.length; i++){
+        timeline.appendChild(renderEntry(plan.entries[i], state, storageKey));
+      }
+    }
+
+    var optionalWrap = document.getElementById('planOptional');
+    var optionalList = document.getElementById('planOptList');
+    if(plan.optional.length > 0 && optionalWrap && optionalList){
+      optionalWrap.hidden = false;
+      for(i = 0; i < plan.optional.length; i++){
+        var li = document.createElement('li');
+        var span = document.createElement('span');
+        span.textContent = 'Kapitel ' + plan.optional[i].n + ' – ' + plan.optional[i].titel;
+        li.appendChild(span);
+        var pill = document.createElement('span');
+        pill.className = 'pill';
+        pill.textContent = 'optional, falls Zeit bleibt';
+        li.appendChild(pill);
+        optionalList.appendChild(li);
+      }
+    }
+
+    var honest = document.getElementById('planHonest');
+    if(honest){
+      var wachMin = wakingMinutesBetween(now, klausurDate, WACH_START, WACH_END);
+      var lernMin = 0;
+      for(i = 0; i < plan.entries.length; i++){
+        if(plan.entries[i].type === 'kapitel' || plan.entries[i].type === 'sim'){
+          lernMin += plan.entries[i].min;
+        }
+      }
+      honest.textContent = 'Ehrlich gerechnet: bis ' + WD[klausurDate.getDay()] + ' ' +
+        pad2(klausurDate.getHours()) + ':' + pad2(klausurDate.getMinutes()) + ' bleiben ' +
+        Math.round(wachMin / 60) + ' h Wachzeit, davon realistisch ' + Math.round(lernMin / 60) + ' h Lernzeit.';
+    }
+  }
+
+  function startCountdown(klausurDate){
+    var valueEl = document.getElementById('planCountdownValue');
+    if(!valueEl){ return; }
+
+    function tick(){
+      var now = new Date();
+      var diff = klausurDate.getTime() - now.getTime();
+      if(diff <= 0){
+        showDone();
+        return;
+      }
+      var hours = Math.floor(diff / 3600000);
+      var minutes = Math.floor((diff % 3600000) / 60000);
+      valueEl.textContent = 'noch ' + hours + ' h ' + minutes + ' min';
+      if(diff < 12 * 3600000){
+        valueEl.className = 'plan-cd-value is-urgent';
+      }else{
+        valueEl.className = 'plan-cd-value';
+      }
+    }
+
+    tick();
+    setInterval(tick, 60000);
+  }
+
+  function showDone(){
+    var live = document.getElementById('planLive');
+    var done = document.getElementById('planDone');
+    if(live){ live.hidden = true; }
+    if(done){ done.hidden = false; }
+  }
+
+  function init(){
+    var dataEl = document.getElementById('planData');
+    if(!dataEl){ return; }
+    var planData;
+    try{
+      planData = JSON.parse(dataEl.textContent || dataEl.innerHTML || '{}');
+    }catch(e){
+      return;
+    }
+
+    var fach = planData.fach || '';
+    var klausurDate = parseLocalDateTime(planData.klausur);
+    var kapitel = planData.kapitel || [];
+    var fallback = document.getElementById('planFallback');
+
+    if(!klausurDate){
+      if(fallback){ fallback.hidden = false; }
+      return;
+    }
+
+    var now = new Date();
+    if(now.getTime() >= klausurDate.getTime()){
+      showDone();
+      return;
+    }
+
+    var storageKey = 'bk-plan-' + fach.toLowerCase();
+    var plan = buildPlan(kapitel, now, klausurDate);
+    renderPlan(plan, klausurDate, now, storageKey);
+    startCountdown(klausurDate);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  }else{
+    init();
+  }
+})();
+</script>
+
 <nav class="tabbar" id="tabbar">
   <button class="tab on" data-tab="hub"><svg class="i"><use href="#i-home"/></svg><span>Start</span></button>
   <button class="tab" data-tab="pfad"><svg class="i"><use href="#i-map"/></svg><span>Lernpfad</span></button>
@@ -2762,6 +3808,7 @@ window.BKBC = (function(){
   function euro(v){ return v.toFixed(2).replace(".",",")+" €"; }
   function ownedChapters(){ var c=0; for(var i=1;i<=NKAP;i++){ if(i!==FREI_KAP && ST.owned[i]) c++; } return c; }
   function hasKomplett(){ return ZUGANG==="komplett" || ST.pkg==="komplett"; }
+  window.BK_HAS_KOMPLETT = hasKomplett;   /* fuer den Simulator */
   function hasAllHandouts(){ return !!ST.hoAll; }
   function handoutUnlocked(n){ return hasAllHandouts() || !!ST.hoOwned[n]; }
 
@@ -2924,9 +3971,9 @@ window.BKBC = (function(){
   window.addEventListener("resize", function(){ drawRail($("pathwrap")); });
 
   /* ================= ROUTER ================= */
-  var screens = {hub:"screen-hub", pfad:"screen-pfad", lektion:"screen-lektion", wiederholen:"screen-wiederholen", nachrichten:"screen-nachrichten", mehr:"screen-mehr", impressum:"screen-impressum", datenschutz:"screen-datenschutz", agb:"screen-agb", widerruf:"screen-widerruf"};
+  var screens = {simulator:"screen-simulator", spick:"screen-spick", plan:"screen-plan", hub:"screen-hub", pfad:"screen-pfad", lektion:"screen-lektion", wiederholen:"screen-wiederholen", nachrichten:"screen-nachrichten", mehr:"screen-mehr", impressum:"screen-impressum", datenschutz:"screen-datenschutz", agb:"screen-agb", widerruf:"screen-widerruf"};
   var tabbar = $("tabbar"), lbar = $("lbar");
-  var TB_TITLES = {pfad:"Lernpfad", wiederholen:"Wiederholen", nachrichten:"Nachrichten", mehr:"Einstellungen", impressum:"Impressum", datenschutz:"Datenschutz", agb:"AGB", widerruf:"Widerruf"};
+  var TB_TITLES = {simulator:"Klausursimulator", spick:"Formelsammlung", plan:"Notfallplan", pfad:"Lernpfad", wiederholen:"Wiederholen", nachrichten:"Nachrichten", mehr:"Einstellungen", impressum:"Impressum", datenschutz:"Datenschutz", agb:"AGB", widerruf:"Widerruf"};
   function show(name){
     Object.keys(screens).forEach(function(k){ $(screens[k]).classList.toggle("active", k===name); });
     document.body.setAttribute("data-screen", name);
@@ -2934,11 +3981,12 @@ window.BKBC = (function(){
     if(name==="pfad") buildPath();
     if(name==="hub") renderHub();
     if(name==="wiederholen") renderRep();
+    if(name==="simulator" && window.BK_SIM_OPEN) window.BK_SIM_OPEN();
     var inLesson = (name==="lektion");
     tabbar.style.display = inLesson ? "none" : "flex";
     lbar.classList.toggle("on", inLesson);
     if(!inLesson){
-      var tabName = (name==="impressum"||name==="datenschutz"||name==="agb"||name==="widerruf") ? "mehr" : name;
+      var tabName = (name==="simulator"||name==="spick"||name==="plan"||name==="impressum"||name==="datenschutz"||name==="agb"||name==="widerruf") ? "mehr" : name;
       document.querySelectorAll(".tab").forEach(function(t){ t.classList.toggle("on", t.dataset.tab===tabName); });
     }
     window.scrollTo(0,0);
@@ -3903,5 +4951,13 @@ html.bklg-lock,body.bklg-lock{overflow:hidden!important;overscroll-behavior:none
 })();
 
 </script>
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8f1261b869214e90b82cb2a1d5683f5c"}'></script><!-- End Cloudflare Web Analytics --></body>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8f1261b869214e90b82cb2a1d5683f5c"}'></script><!-- End Cloudflare Web Analytics -->
+<script id="bkSimBridge">
+(function(){
+  window.BK_SIM_SHARE_URL = "https://ofin.klausurchecker.de/";
+  window.BK_SIM_ACCESS = function(){ try{ return typeof window.BK_HAS_KOMPLETT === "function" ? !!window.BK_HAS_KOMPLETT() : false; }catch(e){ return false; } };
+  window.BK_SIM_BUY = function(){ try{ var b=document.querySelector('[data-tab="pfad"]'); if(b) b.click(); }catch(e){} };
+})();
+</script>
+</body>
 </html>
